@@ -1,0 +1,31 @@
+{
+  "name": "Dr Anuradha Kapoor",
+  "short_name": "Dr Kapoor",
+  "description": "Book a 15-minute visit or WhatsApp consult with Dr Anuradha Kapoor, diabetologist at Lifeline Hospital, Malad.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4efe6",
+  "theme_color": "#0f6e6b",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
