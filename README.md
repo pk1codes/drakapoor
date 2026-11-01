@@ -8,7 +8,7 @@ Picture-first page for patients of Dr Anuradha Kapoor, diabetologist at Lifeline
 
 1. Choose English, Hindi, Marathi, or Gujarati.
 2. Pick a day, then a 15-minute time.
-3. Enter a name and mobile number.
+3. Enter a name.
 4. Send the WhatsApp message that opens on their own phone.
 
 Monday to Friday, 12:00–6:00 India time. The last start is 5:45. Saturday and Sunday show as closed. Times before 12:00 and after 6:00 show as busy. Patients can request a time in the next 28 days.

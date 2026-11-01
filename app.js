@@ -14,7 +14,9 @@ const state = {
   minute: null,
   errors: {},
   draftName: null,
-  draftPhone: null,
+  userStars: 0,
+  draftComment: "",
+  reviewSaved: false,
 };
 
 let lastRoute = "";
@@ -219,37 +221,30 @@ function lastRequest() {
   }
 }
 
-function normalizePhone(raw) {
-  let digits = String(raw).replace(/\D/g, "");
-  if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
-  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
-  return digits;
-}
-
-function validPhone(digits) {
-  return /^[6-9]\d{9}$/.test(digits);
-}
-
 function draftName() {
   if (state.draftName != null) return state.draftName;
   const last = lastRequest();
   return last ? last.name : "";
 }
 
-function draftPhone() {
-  if (state.draftPhone != null) return state.draftPhone;
-  const last = lastRequest();
-  return last ? last.phone : "";
+function loadOwnReview() {
+  try {
+    const value = JSON.parse(storeGet("kapoor-review") || "null");
+    const stars = Number(value && value.stars);
+    if (stars < 1 || stars > 5) return null;
+    return { stars, text: String((value && value.text) || "").slice(0, 280) };
+  } catch (e) {
+    return null;
+  }
 }
 
-function buildMessage(name, phone, y, m, d, hour, minute) {
+function buildMessage(name, y, m, d, hour, minute) {
   const kind = state.mode === "online" ? "Online WhatsApp consult" : "Clinic visit";
   return [
     `${t("greet")} ${CLINIC.doctor}`,
     t("patientLine"),
     "",
     `Name: ${name}`,
-    `Phone: +91 ${phone}`,
     `Type: ${kind}`,
     `Date: ${englishDate(y, m, d)}`,
     `Time: ${clockLabel(hour, minute)}`,
@@ -338,6 +333,58 @@ function drawLang() {
     <section class="pad"><div class="lang-grid">${buttons}</div></section>`;
 }
 
+function iconStar(on) {
+  const fill = on ? "#e6a100" : "none";
+  const stroke = on ? "#e6a100" : "#c9bfb0";
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="${fill}" stroke="${stroke}" stroke-width="1.4" stroke-linejoin="round" d="M12 3.2 14.7 8.7l6 .9-4.4 4.2 1 6-5.3-2.8L6.7 19.8l1-6L3.3 9.6l6-.9L12 3.2z"/></svg>`;
+}
+
+function starRow(rating) {
+  return `<div class="score-stars" aria-hidden="true">${[1, 2, 3, 4, 5].map((n) => {
+    if (rating >= n) return `<span class="star">${iconStar(true)}</span>`;
+    if (rating <= n - 1) return `<span class="star">${iconStar(false)}</span>`;
+    const pct = Math.round((rating - (n - 1)) * 100);
+    return `<span class="star partial" style="--p:${pct}%">${iconStar(false)}<span class="star-fill">${iconStar(true)}</span></span>`;
+  }).join("")}</div>`;
+}
+
+function reviewCards() {
+  const own = loadOwnReview();
+  const mine = own ? `<article class="review-card mine">
+      <div class="who"><strong>${esc(t("you"))}</strong>${starRow(own.stars)}</div>
+      ${own.text ? `<p>${esc(own.text)}</p>` : ""}
+    </article>` : "";
+  const samples = REVIEWS.items.map((item) => `<article class="review-card">
+      <div class="who"><strong>${esc(item.name)}</strong>${starRow(item.stars)}</div>
+      <p>${esc(item.text)}</p>
+    </article>`).join("");
+  return `<div class="review-row">${mine}${samples}</div>`;
+}
+
+function drawReviews() {
+  const stars = state.userStars || (loadOwnReview() && loadOwnReview().stars) || 0;
+  const rateButtons = [1, 2, 3, 4, 5].map((n) => `<button type="button" class="rate-star" data-action="rate" data-star="${n}" aria-label="${n}" ${stars >= n ? 'aria-pressed="true"' : ""}>${iconStar(stars >= n)}</button>`).join("");
+  const composer = stars ? `<form class="rate-form" data-form="review" novalidate>
+      <label class="field">${esc(t("comment"))}
+        <textarea name="comment" rows="3" maxlength="280">${esc(state.draftComment)}</textarea>
+      </label>
+      <button class="go" type="submit">${esc(t("saveRating"))}</button>
+      ${state.reviewSaved ? `<p class="fine">${esc(t("savedHere"))}</p>` : ""}
+    </form>` : "";
+  const preview = REVIEWS.preview ? `<span class="preview">${esc(t("preview"))}</span>` : "";
+  return `<section class="reviews">
+      ${preview}
+      <p class="score-num">${esc(String(REVIEWS.rating))}</p>
+      ${starRow(REVIEWS.rating)}
+      <p class="score-meta">${esc(String(REVIEWS.count))} ${esc(t("googleReviews"))}</p>
+      <p class="rate-label">${esc(t("rateHere"))}</p>
+      <div class="rate-stars">${rateButtons}</div>
+      ${composer}
+      ${reviewCards()}
+      <a class="go" href="${esc(REVIEWS.placeUrl)}" target="_blank" rel="noopener">${esc(t("onGoogle"))}</a>
+    </section>`;
+}
+
 function drawHome() {
   const last = lastRequest();
   const lastCard = last ? `<a class="last" href="${esc(last.url)}" target="_blank" rel="noopener">
@@ -353,6 +400,7 @@ function drawHome() {
       <p class="role">${esc(t("specialty"))}</p>
       <p class="place-line">${esc(t("place"))}</p>
     </header>
+    ${drawReviews()}
     <section class="hours" aria-label="${esc(rangeLabel())}">
       <div class="hours-block open">
         <span class="when">${esc(rangeLabel())}</span>
@@ -477,7 +525,6 @@ function drawForm() {
   const { y, m, d } = state.picked;
   const time = clockLabel(state.hour, state.minute);
   const nameErr = state.errors.name ? `<span class="err" role="alert">${esc(t("nameError"))}</span>` : "";
-  const phoneErr = state.errors.phone ? `<span class="err" role="alert">${esc(t("phoneError"))}</span>` : "";
   return `<div class="summary">
       <strong class="big-time">${esc(time.replace(" PM", "").replace(" AM", ""))}</strong>
       <span class="ampm">PM</span>
@@ -487,10 +534,6 @@ function drawForm() {
       <label class="field">${esc(t("name"))}
         <input name="name" autocomplete="name" autocapitalize="words" value="${esc(draftName())}" ${state.errors.name ? 'aria-invalid="true"' : ""}>
         ${nameErr}
-      </label>
-      <label class="field">${esc(t("phone"))}
-        <input name="phone" inputmode="numeric" autocomplete="tel" maxlength="16" value="${esc(draftPhone())}" ${state.errors.phone ? 'aria-invalid="true"' : ""}>
-        ${phoneErr}
       </label>
       <button class="wa" type="submit">${esc(t("send"))}</button>
       <p class="fine">${esc(t("confirm"))}<br>${esc(t("notHeld"))}</p>
@@ -656,32 +699,47 @@ function onClick(event) {
     state.errors = {};
     state.step = "form";
     render();
+    return;
+  }
+  if (action === "rate") {
+    state.userStars = Number(el.dataset.star);
+    state.reviewSaved = false;
+    render();
   }
 }
 
 function onInput(event) {
   if (event.target.name === "name") state.draftName = event.target.value;
-  if (event.target.name === "phone") state.draftPhone = event.target.value;
+  if (event.target.name === "comment") state.draftComment = event.target.value;
 }
 
 function onSubmit(event) {
+  const reviewForm = event.target.closest('form[data-form="review"]');
+  if (reviewForm) {
+    event.preventDefault();
+    const text = reviewForm.comment.value.replace(/\s+/g, " ").trim().slice(0, 280);
+    const stars = state.userStars;
+    if (stars < 1) return;
+    state.draftComment = text;
+    storeSet("kapoor-review", JSON.stringify({ stars, text }));
+    state.reviewSaved = true;
+    render();
+    return;
+  }
   const form = event.target.closest('form[data-form="book"]');
   if (!form) return;
   event.preventDefault();
   const name = form.name.value.replace(/[\r\n]+/g, " ").trim();
-  const phone = normalizePhone(form.phone.value);
   state.draftName = form.name.value;
-  state.draftPhone = form.phone.value;
-  state.errors = { name: name.length < 1, phone: !validPhone(phone) };
-  if (state.errors.name || state.errors.phone) {
+  state.errors = { name: name.length < 1 };
+  if (state.errors.name) {
     render();
     return;
   }
   const { y, m, d } = state.picked;
-  const url = `https://wa.me/${CLINIC.whatsapp}?text=${encodeURIComponent(buildMessage(name, phone, y, m, d, state.hour, state.minute))}`;
+  const url = `https://wa.me/${CLINIC.whatsapp}?text=${encodeURIComponent(buildMessage(name, y, m, d, state.hour, state.minute))}`;
   const payload = {
     name,
-    phone,
     mode: state.mode,
     when: niceDate(y, m, d),
     time: clockLabel(state.hour, state.minute),
@@ -692,6 +750,12 @@ function onSubmit(event) {
   state.step = "sent";
   render();
   window.open(url, "_blank", "noopener");
+}
+
+const savedReview = loadOwnReview();
+if (savedReview) {
+  state.userStars = savedReview.stars;
+  state.draftComment = savedReview.text;
 }
 
 app.addEventListener("click", onClick);
