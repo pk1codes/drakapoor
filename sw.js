@@ -1,4 +1,4 @@
-const CACHE = "kapoor-shell-2";
+const CACHE = "kapoor-shell-3";
 const ASSETS = [
   "./index.html",
   "./styles.css",
@@ -29,7 +29,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || event.request.method !== "GET") return;
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: "no-cache" })
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();

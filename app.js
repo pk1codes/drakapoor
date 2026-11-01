@@ -191,6 +191,7 @@ function parseRoute() {
   if (hash === "/book" || hash === "book") return "book";
   if (hash === "/online" || hash === "online") return "online";
   if (hash === "/map" || hash === "map") return "map";
+  if (hash === "/books" || hash === "books") return "books";
   if (hash === "/lang" || hash === "lang") return "lang";
   return "home";
 }
@@ -270,6 +271,14 @@ function iconChat() {
 
 function iconPin() {
   return svg('<path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10z"/><circle cx="12" cy="11" r="2"/>');
+}
+
+function iconPhone() {
+  return svg('<path d="M8 4h2l1.2 3.2-1.6.8a10 10 0 0 0 4.4 4.4l.8-1.6L18 12v2a2 2 0 0 1-2 2A12 12 0 0 1 4 6a2 2 0 0 1 2-2z"/>');
+}
+
+function iconBook() {
+  return svg('<path d="M6 4h10a2 2 0 0 1 2 2v14H8a2 2 0 0 0-2 2V4z"/><path d="M6 4a2 2 0 0 0-2 2v14"/>');
 }
 
 function iconChevron(dir) {
@@ -394,13 +403,21 @@ function drawHome() {
   return `<header class="hero">
       <div class="hero-top">
         <div class="mark" aria-hidden="true">AK</div>
-        <button type="button" class="lang-chip" data-action="go" data-hash="#/lang" lang="${pack().htmlLang}">${esc(pack().native)}</button>
+        <div class="hero-tools">
+          <a class="lang-chip call-chip" href="tel:+${CLINIC.whatsapp}" aria-label="${esc(t("call"))}">${iconPhone()}</a>
+          <button type="button" class="lang-chip" data-action="go" data-hash="#/lang" lang="${pack().htmlLang}">${esc(pack().native)}</button>
+        </div>
       </div>
       <h1>${esc(CLINIC.doctor)}</h1>
       <p class="role">${esc(t("specialty"))}</p>
+      <p class="credential">${esc(t("credential"))}</p>
       <p class="place-line">${esc(t("place"))}</p>
     </header>
     ${drawReviews()}
+    <nav class="more">
+      <a href="${esc(CLINIC.practo)}" target="_blank" rel="noopener">${esc(t("practo"))}</a>
+      <a href="${esc(CLINIC.catalog)}" target="_blank" rel="noopener">${esc(t("services"))}</a>
+    </nav>
     <section class="hours" aria-label="${esc(rangeLabel())}">
       <div class="hours-block open">
         <span class="when">${esc(rangeLabel())}</span>
@@ -431,7 +448,20 @@ function drawHome() {
       </a>
     </nav>
     ${lastCard}
+    <p class="books-link"><a href="#/books">${esc(t("books"))}</a></p>
     <p class="fine">${esc(t("emergency"))}</p>`;
+}
+
+function drawBooks() {
+  const tiles = [
+    [CLINIC.books[0], "book1"],
+    [CLINIC.books[1], "book2"],
+  ].map(([url, key]) => `<a class="action" href="${esc(url)}" target="_blank" rel="noopener">
+      <span class="ico">${iconBook()}</span>
+      <span class="grow"><strong>${esc(t(key))}</strong><small>Diabetes Mellitus</small></span>
+      <span class="chev" aria-hidden="true">›</span>
+    </a>`).join("");
+  return `${topbar(t("books"))}<nav class="actions">${tiles}</nav>`;
 }
 
 function monthNav() {
@@ -588,6 +618,7 @@ function draw(screen) {
   const inner = screen === "lang" ? drawLang()
     : screen === "book" || screen === "online" ? drawBook()
     : screen === "map" ? drawMap()
+    : screen === "books" ? drawBooks()
     : drawHome();
   return `<div class="shell">${inner}</div>`;
 }
