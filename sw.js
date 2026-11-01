@@ -1,4 +1,4 @@
-const CACHE = "kapoor-shell-3";
+const CACHE = "kapoor-shell-4";
 const ASSETS = [
   "./index.html",
   "./styles.css",

@@ -192,6 +192,7 @@ function parseRoute() {
   if (hash === "/online" || hash === "online") return "online";
   if (hash === "/map" || hash === "map") return "map";
   if (hash === "/books" || hash === "books") return "books";
+  if (hash === "/reviews" || hash === "reviews") return "reviews";
   if (hash === "/lang" || hash === "lang") return "lang";
   return "home";
 }
@@ -370,25 +371,43 @@ function reviewCards() {
   return `<div class="review-row">${mine}${samples}</div>`;
 }
 
-function drawReviews() {
-  const stars = state.userStars || (loadOwnReview() && loadOwnReview().stars) || 0;
+function scoreChip() {
+  const label = `${REVIEWS.rating}, ${REVIEWS.count} ${t("googleReviews")}`;
+  return `<a class="score-chip" href="#/reviews" aria-label="${esc(label)}">
+      <span class="score-chip-top">${iconStar(true)}<strong>${esc(String(REVIEWS.rating))}</strong></span>
+      <small>${esc(String(REVIEWS.count))}</small>
+    </a>`;
+}
+
+function drawRate() {
+  const own = loadOwnReview();
+  const stars = state.userStars || (own && own.stars) || 0;
+  const showForm = stars > 0 && (state.reviewEditing || !own);
   const rateButtons = [1, 2, 3, 4, 5].map((n) => `<button type="button" class="rate-star" data-action="rate" data-star="${n}" aria-label="${n}" ${stars >= n ? 'aria-pressed="true"' : ""}>${iconStar(stars >= n)}</button>`).join("");
-  const composer = stars ? `<form class="rate-form" data-form="review" novalidate>
+  const composer = showForm ? `<form class="rate-form" data-form="review" novalidate>
       <label class="field">${esc(t("comment"))}
         <textarea name="comment" rows="3" maxlength="280">${esc(state.draftComment)}</textarea>
       </label>
       <button class="go" type="submit">${esc(t("saveRating"))}</button>
-      ${state.reviewSaved ? `<p class="fine">${esc(t("savedHere"))}</p>` : ""}
     </form>` : "";
+  const saved = own && !state.reviewEditing ? `<p class="fine">${esc(t("savedHere"))}</p>` : "";
+  return `<section class="rate-ask">
+      <p class="rate-label">${esc(t("yourStars"))}</p>
+      <div class="rate-stars">${rateButtons}</div>
+      ${saved}
+      ${composer}
+      <a class="go" href="${esc(REVIEWS.placeUrl)}" target="_blank" rel="noopener">${esc(t("onGoogle"))}</a>
+    </section>`;
+}
+
+function drawReviewsPage() {
   const preview = REVIEWS.preview ? `<span class="preview">${esc(t("preview"))}</span>` : "";
-  return `<section class="reviews">
+  return `${topbar(t("googleReviews"))}
+    <section class="reviews">
       ${preview}
       <p class="score-num">${esc(String(REVIEWS.rating))}</p>
       ${starRow(REVIEWS.rating)}
       <p class="score-meta">${esc(String(REVIEWS.count))} ${esc(t("googleReviews"))}</p>
-      <p class="rate-label">${esc(t("rateHere"))}</p>
-      <div class="rate-stars">${rateButtons}</div>
-      ${composer}
       ${reviewCards()}
       <a class="go" href="${esc(REVIEWS.placeUrl)}" target="_blank" rel="noopener">${esc(t("onGoogle"))}</a>
     </section>`;
@@ -404,6 +423,7 @@ function drawHome() {
       <div class="hero-top">
         <div class="mark" aria-hidden="true">AK</div>
         <div class="hero-tools">
+          ${scoreChip()}
           <a class="lang-chip call-chip" href="tel:+${CLINIC.whatsapp}" aria-label="${esc(t("call"))}">${iconPhone()}</a>
           <button type="button" class="lang-chip" data-action="go" data-hash="#/lang" lang="${pack().htmlLang}">${esc(pack().native)}</button>
         </div>
@@ -413,7 +433,6 @@ function drawHome() {
       <p class="credential">${esc(t("credential"))}</p>
       <p class="place-line">${esc(t("place"))}</p>
     </header>
-    ${drawReviews()}
     <nav class="more">
       <a href="${esc(CLINIC.practo)}" target="_blank" rel="noopener">${esc(t("practo"))}</a>
       <a href="${esc(CLINIC.catalog)}" target="_blank" rel="noopener">${esc(t("services"))}</a>
@@ -580,6 +599,7 @@ function drawSent() {
       <p class="when">${esc(sent.when)}</p>
       <p class="fine">${esc(t("confirm"))}<br>${esc(t("notHeld"))}</p>
     </div>
+    ${drawRate()}
     <div class="stack">
       <a class="wa" href="${esc(sent.url)}" target="_blank" rel="noopener">${esc(t("resend"))}</a>
       <button type="button" class="ghost" data-action="go" data-hash="#/">${esc(t("home"))}</button>
@@ -619,6 +639,7 @@ function draw(screen) {
     : screen === "book" || screen === "online" ? drawBook()
     : screen === "map" ? drawMap()
     : screen === "books" ? drawBooks()
+    : screen === "reviews" ? drawReviewsPage()
     : drawHome();
   return `<div class="shell">${inner}</div>`;
 }
@@ -735,6 +756,7 @@ function onClick(event) {
   if (action === "rate") {
     state.userStars = Number(el.dataset.star);
     state.reviewSaved = false;
+    state.reviewEditing = true;
     render();
   }
 }
@@ -754,6 +776,7 @@ function onSubmit(event) {
     state.draftComment = text;
     storeSet("kapoor-review", JSON.stringify({ stars, text }));
     state.reviewSaved = true;
+    state.reviewEditing = false;
     render();
     return;
   }
